@@ -2,10 +2,13 @@
 const express = require('express');
 const app = express();
 
-// Your pre-shared secret – set this via Render environment variable
+// Parse JSON bodies before route handlers
+app.use(express.json());
+
+// Your pre-shared secret – set via Render environment variable
 const PSK = process.env.PSK || '';
 
-// Headers to strip (same list as the Cloudflare Worker)
+// Headers to strip
 const STRIP_HEADERS = new Set([
   "host",
   "connection",
@@ -48,15 +51,7 @@ app.get('/', (req, res) => {
 // Relay endpoint (POST)
 app.post('/', async (req, res) => {
   try {
-    // Method guard – only POST is allowed for relay (GET already handled)
-    if (req.method !== 'POST') {
-      return res.status(405).json({
-        e: "method_not_allowed",
-        message: "Use POST for relay requests. GET is only a health check.",
-      });
-    }
-
-    // Parse body (Express has JSON middleware; we'll add it globally)
+    // POST already guaranteed by route definition
     const body = req.body;
     if (!body || typeof body !== "object") {
       return res.status(400).json({ e: "bad_json" });
@@ -83,7 +78,9 @@ app.post('/', async (req, res) => {
     // ── Loop detection (self-loop) ──
     try {
       const targetHost = new URL(u).hostname.toLowerCase();
-      const workerHost = new URL(req.url, http:${req.headers.host}).hostname.toLowerCase();
+      // Build a full origin from the incoming request
+      const origin = http://${req.headers.host}; // hostname comparison doesn't care about scheme
+      const workerHost = new URL(req.url, origin).hostname.toLowerCase();
       if (targetHost === workerHost) {
         return res.status(508).json({
           e: "loop_detected",
@@ -137,9 +134,6 @@ app.post('/', async (req, res) => {
     return res.status(500).json({ e: message });
   }
 });
-
-// Global middleware to parse JSON bodies
-app.use(express.json());
 
 // Start server
 const PORT = process.env.PORT || 3000;
