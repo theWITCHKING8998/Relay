@@ -83,7 +83,7 @@ app.post('/', async (req, res) => {
     // ── Loop detection (self-loop) ──
     try {
       const targetHost = new URL(u).hostname.toLowerCase();
-      const workerHost = new URL(req.url, http://${req.headers.host}).hostname.toLowerCase());
+      const workerHost = new URL(req.url, http:${req.headers.host}).hostname.toLowerCase());
       if (targetHost === workerHost) {
         return res.status(508).json({
           e: "loop_detected",
