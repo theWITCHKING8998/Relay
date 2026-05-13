@@ -76,7 +76,7 @@ app.post('/', async (req, res) => {
     // ── Loop detection (self-loop) ──
     try {
       const targetHost = new URL(u).hostname.toLowerCase();
-      const origin = http://${req.headers.host}; // hostname comparison doesn't care about scheme
+      const origin = 'http://${req.headers.host}'; // hostname comparison doesn't care about scheme
       const workerHost = new URL(req.url, origin).hostname.toLowerCase();
       if (targetHost === workerHost) {
         return res.status(508).json({
