@@ -51,13 +51,11 @@ app.get('/', (req, res) => {
 // Relay endpoint (POST)
 app.post('/', async (req, res) => {
   try {
-    // POST already guaranteed by route definition
     const body = req.body;
     if (!body || typeof body !== "object") {
       return res.status(400).json({ e: "bad_json" });
     }
 
-    // Check PSK is set on the server
     if (!PSK) {
       return res.status(500).json({ e: "server_psk_missing" });
     }
@@ -78,7 +76,6 @@ app.post('/', async (req, res) => {
     // ── Loop detection (self-loop) ──
     try {
       const targetHost = new URL(u).hostname.toLowerCase();
-      // Build a full origin from the incoming request
       const origin = http://${req.headers.host}; // hostname comparison doesn't care about scheme
       const workerHost = new URL(req.url, origin).hostname.toLowerCase();
       if (targetHost === workerHost) {
@@ -88,7 +85,7 @@ app.post('/', async (req, res) => {
         });
       }
     } catch (_) {
-      // Malformed URL already caught above, but ignore parse errors here
+      // Malformed URL already caught above
     }
 
     // ── GAS loop detection ──
