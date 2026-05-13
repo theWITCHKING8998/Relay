@@ -76,7 +76,7 @@ app.post('/', async (req, res) => {
     // ── Loop detection (self-loop) ──
     try {
       const targetHost = new URL(u).hostname.toLowerCase();
-      const origin = 'http://${req.headers.host}'; // hostname comparison doesn't care about scheme
+      const origin = 'http://' + req.headers.host; // plain string concat – no backticks
       const workerHost = new URL(req.url, origin).hostname.toLowerCase();
       if (targetHost === workerHost) {
         return res.status(508).json({
@@ -135,5 +135,5 @@ app.post('/', async (req, res) => {
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('MasterHttpRelay running on port' ${PORT});
+  console.log('MasterHttpRelay running on port ' + PORT);
 });
