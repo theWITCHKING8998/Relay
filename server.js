@@ -103,14 +103,14 @@ app.post('/', async (req, res) => {
       requestBody = Buffer.from(b64, 'base64');
     }
 
-    // ── Relay the request ──
-    const resp = await fetch(u, {
-      method: m,
-      headers: h,
-      body: requestBody,
-      redirect: "manual",
-    });
-
+    // Replace it with this to inject a Chrome-like User-Agent:
+const hWithUA = { ...h, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36' };
+const resp = await fetch(u, {
+    method: m,
+    headers: hWithUA,
+    body: requestBody,
+    redirect: "manual",
+});
     // Read response body as binary and encode to base64
     const arrayBuffer = await resp.arrayBuffer();
     const responseBodyBase64 = Buffer.from(arrayBuffer).toString('base64');
