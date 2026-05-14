@@ -104,7 +104,7 @@ app.post('/', async (req, res) => {
     }
 
     // Replace it with this to inject a Chrome-like User-Agent:
-const hWithUA = { ...h, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36' };
+const hWithUA = { ...h, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0' };
 const resp = await fetch(u, {
     method: m,
     headers: hWithUA,
