@@ -57,17 +57,15 @@ const STRIP_HEADERS = new Set([
   "via",
 ]);
 
-function decodeBase64ToBytes(input: string): Uint8Array {
-  const bin = atob(input);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
+
+function decodeBase64ToBytes(input) {
+  // Node: use Buffer for base64 decode
+  return Buffer.from(input, 'base64');
 }
 
-function encodeBytesToBase64(bytes: Uint8Array): string {
-  let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin);
+function encodeBytesToBase64(bytes) {
+  // Node: use Buffer for base64 encode
+  return Buffer.from(bytes).toString('base64');
 }
 
 function sanitizeHeaders(h: unknown): Record<string, string> {
