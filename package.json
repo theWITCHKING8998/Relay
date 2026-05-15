@@ -2,15 +2,16 @@
   "name": "Relay",
   "version": "1.0.0",
   "description": "",
-  "main": "app.js",
+  "module": "typescript"
+  "main": "exit_node.ts",
   "scripts": {
     "prestart": "npm run tsc",
-    "start": "node app.js",
+    "start": "node exit_node.ts",
     "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
+  "license": "",
   "devDependencies": {
     "typescript": "2.1.4",
      "express": "^4.18.2"
