@@ -1,14 +1,18 @@
 {
-  "name": "master-http-relay",
+  "name": "Relay",
   "version": "1.0.0",
-  "main": "exit_node.ts",
+  "description": "",
+  "main": "app.js",
   "scripts": {
-    "start": "exit_node.ts"
+    "prestart": "npm run tsc",
+    "start": "node app.js",
+    "tsc": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "2.1.4",
+     "express": "^4.18.2"
   }
 }
