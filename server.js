@@ -68,17 +68,16 @@ function encodeBytesToBase64(bytes) {
   return Buffer.from(bytes).toString('base64');
 }
 
-function sanitizeHeaders(h: unknown): Record<string, string> {
-  const out: Record<string, string> = {};
+function sanitizeHeaders(h) {
+  const out = {};
   if (!h || typeof h !== "object") return out;
-  for (const [k, v] of Object.entries(h as Record<string, unknown>)) {
+  for (const [k, v] of Object.entries(h)) {
     if (!k) continue;
     if (STRIP_HEADERS.has(k.toLowerCase())) continue;
     out[k] = String(v ?? "");
   }
   return out;
 }
-
 export default async function (req: Request): Promise<Response> {
   // Fail closed on the placeholder PSK so a fresh deploy without setup
   // can't accidentally serve as an open relay.
