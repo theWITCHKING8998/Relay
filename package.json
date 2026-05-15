@@ -13,7 +13,7 @@
   "author": "",
   "license": "",
   "devDependencies": {
-    "tsx":"^4.7.0"
+    "tsx":"^4.7.0",
     "typescript": "^2.1.4",
      "express": "^4.18.2"
   }
