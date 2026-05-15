@@ -37,7 +37,7 @@
 // of an offline exit node is that ChatGPT/Claude/Grok stop working;
 // other sites are unaffected.
 
-import TypeScript
+import TypeScript,
 const PSK = process.env.PSK || '';
 
 // Headers the client may send that must NOT be forwarded to the
