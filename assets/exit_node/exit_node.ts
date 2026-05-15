@@ -57,27 +57,30 @@ const STRIP_HEADERS = new Set([
   "via",
 ]);
 
-
-function decodeBase64ToBytes(input) {
-  // Node: use Buffer for base64 decode
-  return Buffer.from(input, 'base64');
+function decodeBase64ToBytes(input: string): Uint8Array {
+  const bin = atob(input);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }
 
-function encodeBytesToBase64(bytes) {
-  // Node: use Buffer for base64 encode
-  return Buffer.from(bytes).toString('base64');
+function encodeBytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
 }
 
-function sanitizeHeaders(h) {
-  const out = {};
+function sanitizeHeaders(h: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
   if (!h || typeof h !== "object") return out;
-  for (const [k, v] of Object.entries(h)) {
+  for (const [k, v] of Object.entries(h as Record<string, unknown>)) {
     if (!k) continue;
     if (STRIP_HEADERS.has(k.toLowerCase())) continue;
     out[k] = String(v ?? "");
   }
   return out;
 }
+
 export default async function (req: Request): Promise<Response> {
   // Fail closed on the placeholder PSK so a fresh deploy without setup
   // can't accidentally serve as an open relay.
