@@ -1,9 +1,9 @@
 {
   "name": "master-http-relay",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "exit_node.ts",
   "scripts": {
-    "start": "node server.js"
+    "start": "exit_node.ts"
   },
   "engines": {
     "node": ">=18"
