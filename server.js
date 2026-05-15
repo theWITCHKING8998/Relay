@@ -1,14 +1,15 @@
+// MasterHttpRelay exit node for Render (Node.js)
+// Ported directly from exit_node.ts of MasterHttpRelayVPN-RUST
 
 const express = require('express');
 const app = express();
 
-// Parse JSON bodies before route handlers
+// Parse JSON bodies just like the Worker would with req.json()
 app.use(express.json());
 
-// Your secret – set via Render environment variable
+// Your pre‑shared key – set this via Render environment variable
 const PSK = process.env.PSK || '';
 
-// Headers to strip
 const STRIP_HEADERS = new Set([
   "host",
   "connection",
@@ -23,9 +24,24 @@ const STRIP_HEADERS = new Set([
   "x-real-ip",
   "forwarded",
   "via",
+  // Internal relay hop header — must not propagate to the final target.
   "x-mhr-hop",
+  // Workers cannot decompress gzip/br/deflate — stripping accept-encoding
+  // forces targets to reply with plain bodies the Worker can forward as-is.
   "accept-encoding",
 ]);
+
+// ---- Helper functions (identical to the TypeScript version) ----
+
+function decodeBase64ToBytes(input) {
+  // Node: use Buffer for base64 decode
+  return Buffer.from(input, 'base64');
+}
+
+function encodeBytesToBase64(bytes) {
+  // Node: use Buffer for base64 encode
+  return Buffer.from(bytes).toString('base64');
+}
 
 function sanitizeHeaders(h) {
   const out = {};
@@ -38,9 +54,11 @@ function sanitizeHeaders(h) {
   return out;
 }
 
-// Health check (GET)
+// ---- Routes (identical behaviour to the original Worker) ----
+
+// Health check – Cloudflare dashboard and browsers test with GET
 app.get('/', (req, res) => {
-  res.json({
+  return res.status(200).json({
     ok: true,
     status: "healthy",
     message: "Everything is OK. Worker is deployed and reachable.",
@@ -48,9 +66,17 @@ app.get('/', (req, res) => {
   });
 });
 
-// Relay endpoint (POST)
+// Main relay handler – only POST is allowed for actual relay
 app.post('/', async (req, res) => {
   try {
+    // Only POST is allowed (GET already handled)
+    if (req.method !== 'POST') {
+      return res.status(405).json({
+        e: "method_not_allowed",
+        message: "Use POST for relay requests. GET is only a health check.",
+      });
+    }
+
     const body = req.body;
     if (!body || typeof body !== "object") {
       return res.status(400).json({ e: "bad_json" });
@@ -66,54 +92,55 @@ app.post('/', async (req, res) => {
     const h = sanitizeHeaders(body.h);
     const b64 = body.b;
 
-    // PSK authentication
+    // Authentication
     if (k !== PSK) return res.status(401).json({ e: "unauthorized" });
 
     // URL validation
     if (!/^https?:\/\//i.test(u))
       return res.status(400).json({ e: "bad_url" });
 
-    // ── Loop detection (self-loop) ──
+    // ── Loop detection (self‑loop) ──
     try {
       const targetHost = new URL(u).hostname.toLowerCase();
-      const origin = 'http://' + req.headers.host; // plain string concat – no backticks
+      const origin = `http://${req.headers.host}`; // build full origin
       const workerHost = new URL(req.url, origin).hostname.toLowerCase();
       if (targetHost === workerHost) {
         return res.status(508).json({
           e: "loop_detected",
-          detail: "target URL resolves to this Worker",
+          detail: "target URL resolves to this Worker"
         });
       }
     } catch (_) {
-      // Malformed URL already caught above
+      // Malformed URL already caught above – ignore parse errors
     }
 
-    // ── GAS loop detection ──
+    // ── GAS → Worker → GAS loop detection ──
     const hopHeader = req.headers["x-mhr-hop"];
     if (hopHeader && /\/macros\/s\//i.test(u)) {
       return res.status(508).json({
         e: "loop_detected",
-        detail: "GAS→Worker→GAS relay loop",
+        detail: "GAS→Worker→GAS relay loop"
       });
     }
 
-    // ── Build the request body ──
+    // Decode base64 body if present
     let requestBody;
     if (typeof b64 === "string" && b64.length > 0) {
-      requestBody = Buffer.from(b64, 'base64');
+      requestBody = decodeBase64ToBytes(b64);
     }
 
-    // Replace it with this to inject a Chrome-like User-Agent:
-const hWithUA = { ...h, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0' };
-const resp = await fetch(u, {
-    method: m,
-    headers: hWithUA,
-    body: requestBody,
-    redirect: "manual",
-});
-    // Read response body as binary and encode to base64
+    // Fetch the target URL
+    const resp = await fetch(u, {
+      method: m,
+      headers: h,
+      body: requestBody,
+      redirect: "manual",
+    });
+
+    // Read entire response as binary and base64‑encode it
     const arrayBuffer = await resp.arrayBuffer();
-    const responseBodyBase64 = Buffer.from(arrayBuffer).toString('base64');
+    const data = new Uint8Array(arrayBuffer);
+    const responseBodyBase64 = encodeBytesToBase64(data);
 
     // Collect response headers
     const respHeaders = {};
@@ -121,6 +148,7 @@ const resp = await fetch(u, {
       respHeaders[key] = value;
     });
 
+    // Return the standard JSON response
     return res.json({
       s: resp.status,
       h: respHeaders,
@@ -134,6 +162,6 @@ const resp = await fetch(u, {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('MasterHttpRelay running on port ' + PORT);
 });
