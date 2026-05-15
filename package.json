@@ -2,7 +2,7 @@
   "name": "Relay",
   "version": "1.0.0",
   "description": "",
-  "module": "typescript"
+  "module": "typescript",
   "main": "exit_node.ts",
   "scripts": {
     "prestart": "npm run tsc",
