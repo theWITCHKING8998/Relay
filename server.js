@@ -1,11 +1,11 @@
-// MasterHttpRelay – standalone relay server (no ngrok needed)
+
 const express = require('express');
 const app = express();
 
 // Parse JSON bodies before route handlers
 app.use(express.json());
 
-// Your pre-shared secret – set via Render environment variable
+// Your secret – set via Render environment variable
 const PSK = process.env.PSK || '';
 
 // Headers to strip
