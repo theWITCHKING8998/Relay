@@ -115,6 +115,7 @@ app.post('/', async (req, res) => {
 
     // 🛡️ Remove compression-related headers so the browser never tries to decompress
     delete respHeaders['content-encoding'];
+    delete respHeaders['Content-Encoding'];
     delete respHeaders['transfer-encoding'];
     delete respHeaders['content-length'];
     delete respHeaders['accept-encoding'];// optional – let the client recalculate
