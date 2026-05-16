@@ -148,6 +148,10 @@ app.post('/', async (req, res) => {
       respHeaders[key] = value;
     });
 
+    // Strip hop-by-hop and encoding headers that no longer apply
+    delete respHeaders['content-encoding'];
+    delete respHeaders['transfer-encoding'];
+    delete respHeaders['content-length'];   // optional but safer – let the client recalculate
     // Return the standard JSON response
     return res.json({
       s: resp.status,
