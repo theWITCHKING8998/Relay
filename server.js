@@ -19,7 +19,7 @@ const STRIP_HEADERS = new Set([
   "forwarded",
   "via",
   "x-mhr-hop",
-  // "accept-encoding",   // ← REMOVED: allow target server to compress
+  "accept-encoding", // force uncompressed response
 ]);
 
 function sanitizeHeaders(h) {
@@ -97,26 +97,26 @@ app.post('/', async (req, res) => {
       requestBody = decodeBase64ToBytes(b64);
     }
 
-    // ✅ CHANGE 1: add `compress: false` to preserve compression
     const resp = await fetch(u, {
       method: m,
       headers: h,
       body: requestBody,
       redirect: "manual",
-      compress: false,   // <-- do NOT auto-decompress
     });
 
     const data = new Uint8Array(await resp.arrayBuffer());
     const responseBodyBase64 = encodeBytesToBase64(data);
 
-    // ✅ CHANGE 2: keep ALL response headers untouched
     const respHeaders = {};
-    resp.headers.forEach((value, key) => {
-      respHeaders[key] = value;
-    });
-
-    // No deletions – the body is still compressed, so headers are correct
-
+resp.headers.forEach((value, key) => {
+  const lower = key.toLowerCase();
+  // Skip headers that are no longer valid after decompression
+  if (lower === "content-encoding" || lower === "transfer-encoding" || lower === "content-length") {
+    return;
+  }
+  respHeaders[key] = value;
+});
+    
     return res.json({
       s: resp.status,
       h: respHeaders,
