@@ -19,7 +19,7 @@ const STRIP_HEADERS = new Set([
   "forwarded",
   "via",
   "x-mhr-hop",
-  "accept-encoding",   // force uncompressed response
+  "accept-encoding", // force uncompressed response
 ]);
 
 function sanitizeHeaders(h) {
@@ -102,6 +102,7 @@ app.post('/', async (req, res) => {
       headers: h,
       body: requestBody,
       redirect: "manual",
+      compress: "false",
     });
 
     const data = new Uint8Array(await resp.arrayBuffer());
@@ -115,7 +116,8 @@ app.post('/', async (req, res) => {
     // 🛡️ Remove compression-related headers so the browser never tries to decompress
     delete respHeaders['content-encoding'];
     delete respHeaders['transfer-encoding'];
-    delete respHeaders['content-length'];   // optional – let the client recalculate
+    delete respHeaders['content-length'];
+    delete respHeaders['accept-encoding'];// optional – let the client recalculate
 
     return res.json({
       s: resp.status,
