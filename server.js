@@ -20,6 +20,7 @@ const STRIP_HEADERS = new Set([
   "via",
   "x-mhr-hop",
   "accept-encoding",   // ← restored: force uncompressed response
+  "content-encoding",
 ]);
 
 function sanitizeHeaders(h) {
