@@ -19,20 +19,47 @@ const STRIP_HEADERS = new Set([
   "forwarded",
   "via",
   "x-mhr-hop",
-  // "accept-encoding",  // ← REMOVED – allow compression
+  // "accept-encoding"  ← removed to allow compression
 ]);
 
-// … sanitizeHeaders, decodeBase64ToBytes, encodeBytesToBase64 (unchanged) …
+function sanitizeHeaders(h) {
+  const out = {};
+  if (!h || typeof h !== "object") return out;
+  for (const [k, v] of Object.entries(h)) {
+    if (!k) continue;
+    if (STRIP_HEADERS.has(k.toLowerCase())) continue;
+    out[k] = String(v ?? "");
+  }
+  return out;
+}
+
+function decodeBase64ToBytes(input) {
+  return Buffer.from(input, 'base64');
+}
+
+function encodeBytesToBase64(bytes) {
+  return Buffer.from(bytes).toString('base64');
+}
 
 app.get('/', (req, res) => {
-  res.json({ ok: true, status: "healthy", message: "Everything is OK." });
+  res.json({
+    ok: true,
+    status: "healthy",
+    message: "Everything is OK. Worker is deployed and reachable.",
+    usage: "Send POST with relay payload for actual proxy requests.",
+  });
 });
 
 app.post('/', async (req, res) => {
   try {
     const body = req.body;
-    if (!body || typeof body !== "object") return res.status(400).json({ e: "bad_json" });
-    if (!PSK) return res.status(500).json({ e: "server_psk_missing" });
+    if (!body || typeof body !== "object") {
+      return res.status(400).json({ e: "bad_json" });
+    }
+
+    if (!PSK) {
+      return res.status(500).json({ e: "server_psk_missing" });
+    }
 
     const k = String(body.k ?? "");
     const u = String(body.u ?? "");
@@ -43,7 +70,27 @@ app.post('/', async (req, res) => {
     if (k !== PSK) return res.status(401).json({ e: "unauthorized" });
     if (!/^https?:\/\//i.test(u)) return res.status(400).json({ e: "bad_url" });
 
-    // Loop detections (unchanged) …
+    // Loop detection (self-loop)
+    try {
+      const targetHost = new URL(u).hostname.toLowerCase();
+      const origin = `http://${req.headers.host}`;
+      const workerHost = new URL(req.url, origin).hostname.toLowerCase();
+      if (targetHost === workerHost) {
+        return res.status(508).json({
+          e: "loop_detected",
+          detail: "target URL resolves to this Worker"
+        });
+      }
+    } catch (_) {}
+
+    // GAS loop detection
+    const hopHeader = req.headers["x-mhr-hop"];
+    if (hopHeader && /\/macros\/s\//i.test(u)) {
+      return res.status(508).json({
+        e: "loop_detected",
+        detail: "GAS→Worker→GAS relay loop"
+      });
+    }
 
     let requestBody;
     if (typeof b64 === "string" && b64.length > 0) {
@@ -55,7 +102,7 @@ app.post('/', async (req, res) => {
       headers: h,
       body: requestBody,
       redirect: "manual",
-      compress: false   // ⬅️ KEY CHANGE
+      compress: false   // ← critical: preserve original compression
     });
 
     const data = new Uint8Array(await resp.arrayBuffer());
