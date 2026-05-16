@@ -109,17 +109,15 @@ app.post('/', async (req, res) => {
     const responseBodyBase64 = encodeBytesToBase64(data);
 
     const respHeaders = {};
-    resp.headers.forEach((value, key) => {
-      respHeaders[key] = value;
-    });
-
-    // 🛡️ Remove compression-related headers so the browser never tries to decompress
-    delete respHeaders['content-encoding'];
-    delete respHeaders['Content-Encoding'];
-    delete respHeaders['transfer-encoding'];
-    delete respHeaders['content-length'];
-    delete respHeaders['accept-encoding'];// optional – let the client recalculate
-
+resp.headers.forEach((value, key) => {
+  const lower = key.toLowerCase();
+  // Skip headers that are no longer valid after decompression
+  if (lower === "content-encoding" || lower === "transfer-encoding" || lower === "content-length") {
+    return;
+  }
+  respHeaders[key] = value;
+});
+    
     return res.json({
       s: resp.status,
       h: respHeaders,
