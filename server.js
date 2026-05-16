@@ -102,7 +102,6 @@ app.post('/', async (req, res) => {
       headers: h,
       body: requestBody,
       redirect: "manual",
-      compress: "false",
     });
 
     const data = new Uint8Array(await resp.arrayBuffer());
