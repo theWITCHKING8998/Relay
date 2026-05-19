@@ -80,14 +80,13 @@ app.post('/', async (req, res) => {
       requestBody = decodeBase64ToBytes(b64);
     }
 
-    // No `compress: false` → Node.js auto‑decompresses if needed (but we stripped accept-encoding, so it won't be compressed)
-    const resp = await fetch(u, {
-      method: m,
-      headers: h,
-      body: requestBody,
-      redirect: "manual",
-    });
-
+   const hWithUA = { ...h, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36' };
+const resp = await fetch(u, {
+    method: m,
+    headers: hWithUA,
+    body: requestBody,
+    redirect: "manual",
+});
     const data = new Uint8Array(await resp.arrayBuffer());
     const responseBodyBase64 = encodeBytesToBase64(data);
 
