@@ -19,7 +19,7 @@ const STRIP_HEADERS = new Set([
   "forwarded",
   "via",
   "x-mhr-hop",
-  // "accept-encoding",   // ← REMOVED: allow target server to compress
+  "accept-encoding",          // ← force uncompressed responses
 ]);
 
 function sanitizeHeaders(h) {
@@ -42,24 +42,14 @@ function encodeBytesToBase64(bytes) {
 }
 
 app.get('/', (req, res) => {
-  res.json({
-    ok: true,
-    status: "healthy",
-    message: "Everything is OK. Worker is deployed and reachable.",
-    usage: "Send POST with relay payload for actual proxy requests.",
-  });
+  res.json({ ok: true, status: "healthy", message: "Exit node is running." });
 });
 
 app.post('/', async (req, res) => {
   try {
     const body = req.body;
-    if (!body || typeof body !== "object") {
-      return res.status(400).json({ e: "bad_json" });
-    }
-
-    if (!PSK) {
-      return res.status(500).json({ e: "server_psk_missing" });
-    }
+    if (!body || typeof body !== "object") return res.status(400).json({ e: "bad_json" });
+    if (!PSK) return res.status(500).json({ e: "server_psk_missing" });
 
     const k = String(body.k ?? "");
     const u = String(body.u ?? "");
@@ -70,26 +60,19 @@ app.post('/', async (req, res) => {
     if (k !== PSK) return res.status(401).json({ e: "unauthorized" });
     if (!/^https?:\/\//i.test(u)) return res.status(400).json({ e: "bad_url" });
 
-    // Loop detection (self-loop)
+    // Self‑loop detection
     try {
       const targetHost = new URL(u).hostname.toLowerCase();
       const origin = `http://${req.headers.host}`;
       const workerHost = new URL(req.url, origin).hostname.toLowerCase();
       if (targetHost === workerHost) {
-        return res.status(508).json({
-          e: "loop_detected",
-          detail: "target URL resolves to this Worker"
-        });
+        return res.status(508).json({ e: "loop_detected", detail: "self-loop" });
       }
     } catch (_) {}
 
     // GAS loop detection
-    const hopHeader = req.headers["x-mhr-hop"];
-    if (hopHeader && /\/macros\/s\//i.test(u)) {
-      return res.status(508).json({
-        e: "loop_detected",
-        detail: "GAS→Worker→GAS relay loop"
-      });
+    if (req.headers["x-mhr-hop"] && /\/macros\/s\//i.test(u)) {
+      return res.status(508).json({ e: "loop_detected", detail: "GAS-loop" });
     }
 
     let requestBody;
@@ -97,31 +80,26 @@ app.post('/', async (req, res) => {
       requestBody = decodeBase64ToBytes(b64);
     }
 
-    // ✅ CHANGE 1: add `compress: false` to preserve compression
+    // No `compress: false` → Node.js auto‑decompresses if needed (but we stripped accept-encoding, so it won't be compressed)
     const resp = await fetch(u, {
       method: m,
       headers: h,
       body: requestBody,
       redirect: "manual",
-      compress: false,   // <-- do NOT auto-decompress
     });
 
     const data = new Uint8Array(await resp.arrayBuffer());
     const responseBodyBase64 = encodeBytesToBase64(data);
 
-    // ✅ CHANGE 2: keep ALL response headers untouched
+    // Build response headers – skip any encoding/length headers
     const respHeaders = {};
     resp.headers.forEach((value, key) => {
+      const lower = key.toLowerCase();
+      if (lower === "content-encoding" || lower === "transfer-encoding" || lower === "content-length") return;
       respHeaders[key] = value;
     });
 
-    // No deletions – the body is still compressed, so headers are correct
-
-    return res.json({
-      s: resp.status,
-      h: respHeaders,
-      b: responseBodyBase64,
-    });
+    return res.json({ s: resp.status, h: respHeaders, b: responseBodyBase64 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return res.status(500).json({ e: message });
